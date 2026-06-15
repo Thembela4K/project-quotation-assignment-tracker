@@ -13,11 +13,14 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\JobCardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OfficialDocumentController;
 use App\Http\Controllers\OperationsAssistantController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PasswordResetOtpController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseRecordController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\RequisitionController;
@@ -36,12 +39,20 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('guest')->group(function (): void {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login'])->name('login.store');
+    Route::get('forgot-password', [PasswordResetOtpController::class, 'requestForm'])->name('password.request');
+    Route::post('forgot-password', [PasswordResetOtpController::class, 'sendOtp'])->name('password.email');
+    Route::get('reset-password', [PasswordResetOtpController::class, 'resetForm'])->name('password.reset.form');
+    Route::post('reset-password', [PasswordResetOtpController::class, 'reset'])->name('password.reset');
+    Route::get('invitations/{token}', [InvitationController::class, 'show'])->name('invitations.accept');
+    Route::post('invitations/{token}', [InvitationController::class, 'accept'])->name('invitations.accept.store');
 });
 
 Route::post('logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('profile/password', [ProfileController::class, 'password'])->name('profile.password');
+    Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 
     Route::resource('clients', ClientController::class);
     Route::resource('client-activities', ClientActivityController::class)->except(['show']);
@@ -135,6 +146,7 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('role:'.User::ROLE_SUPER_ADMIN)->group(function (): void {
         Route::resource('departments', DepartmentController::class);
+        Route::post('users/{user}/resend-invitation', [UserController::class, 'resendInvitation'])->name('users.resend-invitation');
         Route::resource('users', UserController::class);
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');

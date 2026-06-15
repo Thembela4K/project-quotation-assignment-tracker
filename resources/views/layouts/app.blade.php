@@ -238,7 +238,7 @@
                         </svg>
                     </button>
 
-                    <div class="global-user">
+                    <a class="global-user" href="{{ route('profile.password') }}">
                         <strong>{{ $user->name }}</strong>
                         <span>
                             {{ \App\Models\User::ROLES[$user->role] ?? $user->role }}
@@ -246,7 +246,7 @@
                                 | {{ $user->department->name }}
                             @endif
                         </span>
-                    </div>
+                    </a>
 
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
@@ -305,7 +305,7 @@
 
                 <div class="sidebar-footer">
                     <span class="sidebar-footer-label">Signed in</span>
-                    <strong>{{ $user->name }}</strong>
+                    <strong><a class="link" href="{{ route('profile.password') }}">{{ $user->name }}</a></strong>
                     <small>
                         {{ \App\Models\User::ROLES[$user->role] ?? $user->role }}
                         @if($user->department)

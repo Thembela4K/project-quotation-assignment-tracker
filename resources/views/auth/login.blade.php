@@ -64,6 +64,7 @@
                         Remember me
                     </label>
                     <button class="btn-primary h-11 w-full" type="submit">Sign in</button>
+                    <a class="block text-center text-sm font-semibold text-[#087aa5]" href="{{ route('password.request') }}">Forgot password?</a>
                 </form>
             </div>
         </section>

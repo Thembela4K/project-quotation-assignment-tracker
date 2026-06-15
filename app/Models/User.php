@@ -37,6 +37,7 @@ class User extends Authenticatable
     protected $fillable = [
         'staff_member_id',
         'department_id',
+        'invited_by',
         'name',
         'username',
         'email',
@@ -45,6 +46,8 @@ class User extends Authenticatable
         'is_active',
         'receives_submissions',
         'can_access_sppra',
+        'invited_at',
+        'invitation_accepted_at',
     ];
 
     /**
@@ -60,6 +63,8 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'receives_submissions' => 'boolean',
             'can_access_sppra' => 'boolean',
+            'invited_at' => 'datetime',
+            'invitation_accepted_at' => 'datetime',
         ];
     }
 
@@ -73,9 +78,19 @@ class User extends Authenticatable
         return $this->belongsTo(StaffMember::class);
     }
 
+    public function invitedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'invited_by');
+    }
+
     public function crmNotifications(): HasMany
     {
         return $this->hasMany(CrmNotification::class);
+    }
+
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(UserInvitation::class);
     }
 
     public function hasRole(string ...$roles): bool
