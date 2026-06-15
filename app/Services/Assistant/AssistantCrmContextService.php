@@ -5,8 +5,10 @@ namespace App\Services\Assistant;
 use App\Models\Client;
 use App\Models\CrmNotification;
 use App\Models\CrmTask;
+use App\Models\DeliveryNote;
 use App\Models\Document;
 use App\Models\Invoice;
+use App\Models\JobCard;
 use App\Models\Quotation;
 use App\Models\Requisition;
 use App\Models\SalesQuotation;
@@ -22,6 +24,8 @@ class AssistantCrmContextService
         'tender_proposals',
         'quotation_requests',
         'sales_quotations',
+        'job_cards',
+        'delivery_notes',
         'invoices',
         'requisitions',
         'tasks',
@@ -88,6 +92,8 @@ class AssistantCrmContextService
                         'requisitions',
                         'tasks',
                         'sales_quotations',
+                        'job_cards',
+                        'delivery_notes',
                         'invoices',
                         'approvals',
                         'attendance',
@@ -115,6 +121,8 @@ class AssistantCrmContextService
                 'tender_proposals' => $this->tenderProposals($user, $limit),
                 'quotation_requests' => $this->quotationRequests($user, $limit),
                 'sales_quotations' => $this->salesQuotations($user, $limit),
+                'job_cards' => $this->jobCards($user, $limit),
+                'delivery_notes' => $this->deliveryNotes($user, $limit),
                 'invoices' => $this->invoices($user, $limit),
                 'requisitions' => $this->requisitions($user, $limit),
                 'tasks' => $this->tasks($user, $limit),
@@ -134,6 +142,9 @@ class AssistantCrmContextService
             'tender_proposals' => TenderProposal::query()->visibleTo($user)->count(),
             'quotation_requests' => Quotation::query()->visibleTo($user)->count(),
             'sales_quotations' => SalesQuotation::query()->visibleTo($user)->count(),
+            'job_cards' => JobCard::query()->visibleTo($user)->count(),
+            'job_cards_ready_for_invoice' => JobCard::query()->visibleTo($user)->where('status', JobCard::STATUS_READY_FOR_INVOICE)->count(),
+            'delivery_notes' => DeliveryNote::query()->visibleTo($user)->count(),
             'invoices' => Invoice::query()->visibleTo($user)->count(),
             'unpaid_invoices' => Invoice::query()->visibleTo($user)->where('balance_due', '>', 0)->count(),
             'requisitions' => Requisition::query()->visibleTo($user)->count(),
@@ -254,13 +265,15 @@ class AssistantCrmContextService
     {
         return Invoice::query()
             ->visibleTo($user)
-            ->with(['client:id,name', 'department:id,name'])
+            ->with(['client:id,name', 'department:id,name', 'salesQuotation:id,quotation_number', 'jobCard:id,job_card_number'])
             ->latest('updated_at')
             ->limit($limit)
             ->get()
             ->map(fn (Invoice $invoice): array => [
                 'id' => $invoice->id,
                 'number' => $invoice->invoice_number,
+                'quotation_number' => $invoice->salesQuotation?->quotation_number,
+                'job_card_number' => $invoice->jobCard?->job_card_number,
                 'client' => $invoice->client?->name,
                 'department' => $invoice->department?->name,
                 'status' => $invoice->status,
@@ -269,6 +282,51 @@ class AssistantCrmContextService
                 'total' => $invoice->total,
                 'amount_paid' => $invoice->amount_paid,
                 'balance_due' => $invoice->balance_due,
+            ])
+            ->all();
+    }
+
+    private function jobCards(User $user, int $limit): array
+    {
+        return JobCard::query()
+            ->visibleTo($user)
+            ->with(['salesQuotation:id,quotation_number', 'client:id,name', 'department:id,name', 'invoice:id,job_card_id,invoice_number'])
+            ->latest('updated_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (JobCard $jobCard): array => [
+                'id' => $jobCard->id,
+                'number' => $jobCard->job_card_number,
+                'title' => $jobCard->title,
+                'quotation_number' => $jobCard->salesQuotation?->quotation_number,
+                'invoice_number' => $jobCard->invoice?->invoice_number,
+                'client' => $jobCard->client?->name,
+                'department' => $jobCard->department?->name,
+                'status' => $jobCard->status,
+                'delivery_required' => $jobCard->delivery_required,
+                'due_date' => $jobCard->due_date?->toDateString(),
+            ])
+            ->all();
+    }
+
+    private function deliveryNotes(User $user, int $limit): array
+    {
+        return DeliveryNote::query()
+            ->visibleTo($user)
+            ->with(['jobCard:id,job_card_number', 'salesQuotation:id,quotation_number', 'client:id,name', 'department:id,name'])
+            ->latest('updated_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (DeliveryNote $deliveryNote): array => [
+                'id' => $deliveryNote->id,
+                'number' => $deliveryNote->delivery_note_number,
+                'job_card_number' => $deliveryNote->jobCard?->job_card_number,
+                'quotation_number' => $deliveryNote->salesQuotation?->quotation_number,
+                'client' => $deliveryNote->client?->name,
+                'department' => $deliveryNote->department?->name,
+                'status' => $deliveryNote->status,
+                'delivery_date' => $deliveryNote->delivery_date?->toDateString(),
+                'recipient' => $deliveryNote->recipient_name,
             ])
             ->all();
     }

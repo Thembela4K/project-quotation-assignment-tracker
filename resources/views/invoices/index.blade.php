@@ -4,10 +4,10 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <h1 class="page-title">Invoices</h1>
-            <p class="page-subtitle">Reception-issued client invoices, balances, payment status, and print/email workflow.</p>
+            <p class="page-subtitle">Reception-issued invoices created from completed department job cards.</p>
         </div>
         @if(auth()->user()->canManageFinance())
-            <a class="btn-primary" href="{{ route('invoices.create') }}">New Invoice</a>
+            <a class="btn-primary" href="{{ route('job-cards.index', ['status' => \App\Models\JobCard::STATUS_READY_FOR_INVOICE]) }}">Ready Job Cards</a>
         @endif
     </div>
 
@@ -29,11 +29,20 @@
     <section class="panel mt-6 overflow-hidden p-0">
         <div class="overflow-x-auto">
             <table class="data-table">
-                <thead><tr><th>Invoice</th><th>Client</th><th>Status</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th></th></tr></thead>
+                <thead><tr><th>Invoice</th><th>Source</th><th>Client</th><th>Status</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th></th></tr></thead>
                 <tbody>
                     @forelse($invoices as $invoice)
                         <tr>
                             <td><strong>{{ $invoice->invoice_number }}</strong><br><span class="text-xs text-neutral-500">{{ $invoice->department?->name ?? 'Unassigned' }}</span></td>
+                            <td>
+                                @if($invoice->jobCard)
+                                    <a class="link" href="{{ route('job-cards.show', $invoice->jobCard) }}">{{ $invoice->jobCard->job_card_number }}</a>
+                                @elseif($invoice->salesQuotation)
+                                    <a class="link" href="{{ route('sales-quotations.show', $invoice->salesQuotation) }}">{{ $invoice->salesQuotation->quotation_number }}</a>
+                                @else
+                                    -
+                                @endif
+                            </td>
                             <td>{{ $invoice->client->name }}</td>
                             <td>{{ $invoice->status }}</td>
                             <td>E{{ number_format((float) $invoice->total, 2) }}</td>
@@ -43,7 +52,7 @@
                             <td class="text-right"><a class="link" href="{{ route('invoices.show', $invoice) }}">Open</a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="8"><p class="empty">No invoices yet.</p></td></tr>
+                        <tr><td colspan="9"><p class="empty">No invoices yet.</p></td></tr>
                     @endforelse
                 </tbody>
             </table>

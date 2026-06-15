@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Client;
 use App\Models\Expense;
 use App\Models\Invoice;
+use App\Models\DeliveryNote;
+use App\Models\JobCard;
 use App\Models\Payment;
 use App\Models\PurchaseRecord;
 use App\Models\Requisition;
@@ -26,6 +28,16 @@ class FinanceNumberService
     public function invoiceNumber(): string
     {
         return $this->next(Invoice::class, 'invoice_number', 'INV');
+    }
+
+    public function jobCardNumber(): string
+    {
+        return $this->next(JobCard::class, 'job_card_number', 'JOB');
+    }
+
+    public function deliveryNoteNumber(): string
+    {
+        return $this->next(DeliveryNote::class, 'delivery_note_number', 'DN');
     }
 
     public function paymentNumber(): string

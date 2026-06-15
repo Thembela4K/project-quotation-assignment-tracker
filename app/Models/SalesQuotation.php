@@ -114,6 +114,16 @@ class SalesQuotation extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function jobCards(): HasMany
+    {
+        return $this->hasMany(JobCard::class)->latest();
+    }
+
+    public function deliveryNotes(): HasMany
+    {
+        return $this->hasMany(DeliveryNote::class)->latest('delivery_date');
+    }
+
     public function documents(): MorphMany
     {
         return $this->morphMany(Document::class, 'documentable');

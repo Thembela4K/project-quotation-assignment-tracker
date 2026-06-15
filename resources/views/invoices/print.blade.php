@@ -34,6 +34,12 @@
         </div>
     </div>
     <p><strong>Client:</strong> {{ $invoice->client->name }}<br>{!! nl2br(e($invoice->client->address)) !!}</p>
+    @if($invoice->jobCard || $invoice->salesQuotation)
+        <p>
+            @if($invoice->jobCard)<strong>Job Card:</strong> {{ $invoice->jobCard->job_card_number }}<br>@endif
+            @if($invoice->salesQuotation)<strong>Quotation:</strong> {{ $invoice->salesQuotation->quotation_number }}@endif
+        </p>
+    @endif
     <table>
         <thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Unit</th><th class="right">VAT</th><th class="right">Total</th></tr></thead>
         <tbody>

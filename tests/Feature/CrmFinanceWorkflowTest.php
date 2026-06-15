@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Client;
+use App\Models\DeliveryNote;
 use App\Models\Department;
 use App\Models\Invoice;
+use App\Models\JobCard;
 use App\Models\SalesQuotation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -60,9 +62,10 @@ class CrmFinanceWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_reception_converts_approved_quotation_to_invoice_and_records_payment(): void
+    public function test_department_job_card_drives_reception_invoice_and_payment(): void
     {
         $department = $this->department('IT Department');
+        $departmentUser = $this->user('IT User', 'it.workflow@example.com', User::ROLE_DEPARTMENT_USER, $department);
         $reception = $this->user('Reception', 'reception@example.com', User::ROLE_RECEPTION);
         $client = Client::query()->create([
             'client_code' => 'CLT-2026-0002',
@@ -72,7 +75,7 @@ class CrmFinanceWorkflowTest extends TestCase
         $quotation = SalesQuotation::query()->create([
             'client_id' => $client->id,
             'department_id' => $department->id,
-            'created_by' => $reception->id,
+            'created_by' => $departmentUser->id,
             'quotation_number' => 'QUO-2026-0002',
             'title' => 'Approved Quote',
             'status' => SalesQuotation::STATUS_APPROVED,
@@ -93,11 +96,47 @@ class CrmFinanceWorkflowTest extends TestCase
             'line_total' => 115,
         ]);
 
-        $this->actingAs($reception)->post(route('sales-quotations.convert-to-invoice', $quotation))->assertRedirect();
+        $this->actingAs($departmentUser)->post(route('sales-quotations.mark-sent', $quotation))->assertRedirect();
+        $this->actingAs($departmentUser)->post(route('sales-quotations.mark-accepted', $quotation))->assertRedirect();
+
+        $this->actingAs($departmentUser)->post(route('job-cards.store'), [
+            'sales_quotation_id' => $quotation->id,
+            'job_card_number' => 'JOB-2026-0001',
+            'title' => 'Approved Quote Delivery',
+            'scope' => 'Deliver and configure the approved service.',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+            'delivery_required' => 1,
+        ])->assertRedirect();
+
+        $jobCard = JobCard::query()->firstOrFail();
+        $this->assertSame(JobCard::STATUS_DRAFT, $jobCard->status);
+        $this->assertTrue($jobCard->delivery_required);
+
+        $this->actingAs($departmentUser)->post(route('job-cards.create-invoice', $jobCard))->assertForbidden();
+        $this->actingAs($departmentUser)->post(route('job-cards.ready-for-invoice', $jobCard))->assertRedirect();
+
+        $this->actingAs($reception)->post(route('delivery-notes.store'), [
+            'job_card_id' => $jobCard->id,
+            'delivery_note_number' => 'DN-2026-0001',
+            'delivery_date' => now()->toDateString(),
+            'recipient_name' => 'Client Receiver',
+            'delivery_address' => 'Client offices',
+            'notes' => 'Router delivered.',
+        ])->assertRedirect();
+
+        $deliveryNote = DeliveryNote::query()->firstOrFail();
+        $this->actingAs($reception)->post(route('delivery-notes.issue', $deliveryNote))->assertRedirect();
+
+        $this->actingAs($reception)->post(route('job-cards.create-invoice', $jobCard->fresh()))->assertRedirect();
 
         $invoice = Invoice::query()->firstOrFail();
+        $this->assertSame($quotation->id, $invoice->sales_quotation_id);
+        $this->assertSame($jobCard->id, $invoice->job_card_id);
         $this->assertSame('115.00', $invoice->total);
         $this->assertSame('115.00', $invoice->balance_due);
+
+        $this->actingAs($reception)->post(route('invoices.issue', $invoice))->assertRedirect();
 
         $this->actingAs($reception)->post(route('payments.store', $invoice), [
             'payment_date' => now()->toDateString(),

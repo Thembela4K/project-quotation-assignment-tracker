@@ -22,7 +22,7 @@
                 $activeModule = 'clients';
             } elseif (request()->routeIs('client-activities.*')) {
                 $activeModule = 'clients';
-            } elseif (request()->routeIs('sales-quotations.*') || request()->routeIs('invoices.*') || request()->routeIs('payments.*') || request()->routeIs('expenses.*') || request()->routeIs('catalog-items.*')) {
+            } elseif (request()->routeIs('sales-quotations.*') || request()->routeIs('job-cards.*') || request()->routeIs('delivery-notes.*') || request()->routeIs('invoices.*') || request()->routeIs('payments.*') || request()->routeIs('expenses.*') || request()->routeIs('catalog-items.*')) {
                 $activeModule = 'finance';
             } elseif (request()->routeIs('tender-proposals.*') || request()->routeIs('quotations.*') || request()->routeIs('assignments.*') || request()->routeIs('submissions.*') || request()->routeIs('reminders.*') || request()->routeIs('requisitions.*')) {
                 $activeModule = 'operations';
@@ -155,6 +155,8 @@
                 ],
                 'finance' => [
                     ['label' => 'Sales Quotations', 'route' => route('sales-quotations.index'), 'active' => request()->routeIs('sales-quotations.*'), 'visible' => true, 'badge' => null],
+                    ['label' => 'Job Cards', 'route' => route('job-cards.index'), 'active' => request()->routeIs('job-cards.*'), 'visible' => true, 'badge' => null],
+                    ['label' => 'Delivery Notes', 'route' => route('delivery-notes.index'), 'active' => request()->routeIs('delivery-notes.*'), 'visible' => true, 'badge' => null],
                     ['label' => 'Invoices', 'route' => route('invoices.index'), 'active' => request()->routeIs('invoices.*') || request()->routeIs('payments.*'), 'visible' => true, 'badge' => null],
                     ['label' => 'Expenses', 'route' => route('expenses.index'), 'active' => request()->routeIs('expenses.*'), 'visible' => true, 'badge' => null],
                     ['label' => 'Item Catalog', 'route' => route('catalog-items.index'), 'active' => request()->routeIs('catalog-items.*'), 'visible' => true, 'badge' => null],

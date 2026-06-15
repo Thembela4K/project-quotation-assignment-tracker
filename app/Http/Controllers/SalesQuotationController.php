@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\CatalogItem;
 use App\Models\Client;
 use App\Models\Department;
-use App\Models\Invoice;
 use App\Models\SalesQuotation;
 use App\Models\User;
 use App\Services\AuditLogService;
@@ -15,7 +14,6 @@ use App\Services\FinanceNumberService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -90,7 +88,17 @@ class SalesQuotationController extends Controller
         $this->authorizeView($request, $salesQuotation);
 
         return view('sales_quotations.show', [
-            'salesQuotation' => $salesQuotation->load(['client.contacts', 'department', 'creator', 'approver', 'items.catalogItem', 'invoice']),
+            'salesQuotation' => $salesQuotation->load([
+                'client.contacts',
+                'department',
+                'creator',
+                'approver',
+                'items.catalogItem',
+                'invoice',
+                'jobCards.invoice',
+                'jobCards.deliveryNotes',
+                'deliveryNotes',
+            ]),
             'vatRate' => app(FinanceCalculatorService::class)->vatRatePercent(),
         ]);
     }
@@ -185,7 +193,9 @@ class SalesQuotationController extends Controller
 
     public function markSent(Request $request, SalesQuotation $salesQuotation): RedirectResponse
     {
-        if (! $request->user()->canManageFinance() || ! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT], true)) {
+        $this->authorizeExternalTracking($request, $salesQuotation);
+
+        if (! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT], true)) {
             abort(403);
         }
 
@@ -194,35 +204,55 @@ class SalesQuotationController extends Controller
             'sent_at' => $salesQuotation->sent_at ?: now(),
         ]);
 
-        return back()->with('success', 'Sales quotation marked as sent.');
+        return back()->with('success', 'Sales quotation marked as sent externally.');
     }
 
-    public function email(Request $request, SalesQuotation $salesQuotation): RedirectResponse
+    public function markAccepted(Request $request, SalesQuotation $salesQuotation): RedirectResponse
     {
-        if (! $request->user()->canManageFinance() || ! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT], true)) {
+        $this->authorizeExternalTracking($request, $salesQuotation);
+
+        if (! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT, SalesQuotation::STATUS_ACCEPTED], true)) {
             abort(403);
         }
 
-        $recipient = $salesQuotation->client->billing_email ?: $salesQuotation->client->email;
-        if (! $recipient) {
-            return back()->with('warning', 'Client has no email or billing email.');
-        }
-
-        Mail::send('emails.sales-quotation', ['salesQuotation' => $salesQuotation->load(['client', 'items'])], function ($message) use ($recipient, $salesQuotation): void {
-            $message->to($recipient)->subject("Sales Quotation {$salesQuotation->quotation_number}");
-        });
-
         $salesQuotation->update([
-            'status' => SalesQuotation::STATUS_SENT,
+            'status' => SalesQuotation::STATUS_ACCEPTED,
             'sent_at' => $salesQuotation->sent_at ?: now(),
+            'accepted_at' => $salesQuotation->accepted_at ?: now(),
         ]);
 
-        return back()->with('success', 'Sales quotation emailed to client.');
+        return back()->with('success', 'Sales quotation marked as accepted by client.');
     }
 
-    public function convertToInvoice(Request $request, SalesQuotation $salesQuotation, FinanceNumberService $numbers, FinanceCalculatorService $calculator): RedirectResponse
+    public function markDeclined(Request $request, SalesQuotation $salesQuotation): RedirectResponse
     {
-        if (! $request->user()->canManageFinance() || ! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT, SalesQuotation::STATUS_ACCEPTED], true)) {
+        $this->authorizeExternalTracking($request, $salesQuotation);
+
+        if (! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT, SalesQuotation::STATUS_DECLINED], true)) {
+            abort(403);
+        }
+
+        $salesQuotation->update(['status' => SalesQuotation::STATUS_DECLINED]);
+
+        return back()->with('success', 'Sales quotation marked as declined by client.');
+    }
+
+    public function markExpired(Request $request, SalesQuotation $salesQuotation): RedirectResponse
+    {
+        $this->authorizeExternalTracking($request, $salesQuotation);
+
+        if (! in_array($salesQuotation->status, [SalesQuotation::STATUS_APPROVED, SalesQuotation::STATUS_SENT, SalesQuotation::STATUS_EXPIRED], true)) {
+            abort(403);
+        }
+
+        $salesQuotation->update(['status' => SalesQuotation::STATUS_EXPIRED]);
+
+        return back()->with('success', 'Sales quotation marked as expired.');
+    }
+
+    public function convertToInvoice(Request $request, SalesQuotation $salesQuotation): RedirectResponse
+    {
+        if (! $request->user()->canManageFinance()) {
             abort(403);
         }
 
@@ -230,30 +260,9 @@ class SalesQuotationController extends Controller
             return redirect()->route('invoices.show', $salesQuotation->invoice)->with('warning', 'This quotation already has an invoice.');
         }
 
-        $invoice = DB::transaction(function () use ($request, $salesQuotation, $numbers, $calculator): Invoice {
-            $invoice = Invoice::query()->create([
-                'client_id' => $salesQuotation->client_id,
-                'sales_quotation_id' => $salesQuotation->id,
-                'department_id' => $salesQuotation->department_id,
-                'created_by' => $request->user()->id,
-                'invoice_number' => $numbers->invoiceNumber(),
-                'status' => Invoice::STATUS_ISSUED,
-                'issue_date' => now()->toDateString(),
-                'due_date' => now()->addDays(30)->toDateString(),
-                'notes' => $salesQuotation->notes,
-                'terms' => $salesQuotation->terms,
-                'issued_at' => now(),
-            ]);
-            $calculator->syncInvoiceItems($invoice, $calculator->quotationItemsForInvoice($salesQuotation->load('items')));
-            $salesQuotation->update([
-                'status' => SalesQuotation::STATUS_CONVERTED,
-                'converted_at' => now(),
-            ]);
-
-            return $invoice;
-        });
-
-        return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice created from approved quotation.');
+        return redirect()
+            ->route('sales-quotations.show', $salesQuotation)
+            ->with('warning', 'Invoices are now created from completed job cards. Ask the department to create and complete a job card first.');
     }
 
     public function print(Request $request, SalesQuotation $salesQuotation): View
@@ -342,6 +351,15 @@ class SalesQuotationController extends Controller
             abort(403);
         }
 
+        if ($request->user()->canManageFinance() || $quotation->department_id === $request->user()->department_id) {
+            return;
+        }
+
+        abort(403);
+    }
+
+    private function authorizeExternalTracking(Request $request, SalesQuotation $quotation): void
+    {
         if ($request->user()->canManageFinance() || $quotation->department_id === $request->user()->department_id) {
             return;
         }

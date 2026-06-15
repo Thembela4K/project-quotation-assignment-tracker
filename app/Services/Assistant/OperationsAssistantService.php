@@ -264,7 +264,7 @@ class OperationsAssistantService
         }
 
         return (bool) preg_match(
-            '/\b(tender|proposal|quotation request|request quotation|rfq|requisition|task|document|file|invoice|sales quotation|quote|client|customer|supplier|approval|attendance|report|notification|overdue|pending|submitted|unpaid|paid|due|approved|rejected|draft|finished|active|inactive|last month|this month|today|tomorrow|yesterday)\b/i',
+            '/\b(tender|proposal|quotation request|request quotation|rfq|requisition|task|document|file|invoice|sales quotation|quote|job card|delivery note|client|customer|supplier|approval|attendance|report|notification|overdue|pending|submitted|unpaid|paid|due|approved|rejected|draft|finished|active|inactive|last month|this month|today|tomorrow|yesterday)\b/i',
             $text,
         );
     }
@@ -322,6 +322,8 @@ class OperationsAssistantService
             'tender_proposals' => ['tender', 'proposal', 'sppra', 'esppra'],
             'quotation_requests' => ['quotation request', 'request quotation', 'rfq', 'quote request'],
             'sales_quotations' => ['sales quotation', 'estimate', 'quote', 'quotation'],
+            'job_cards' => ['job card', 'work card'],
+            'delivery_notes' => ['delivery note', 'handover note'],
             'invoices' => ['invoice', 'payment', 'paid', 'unpaid', 'overdue invoice'],
             'requisitions' => ['requisition', 'funds', 'cash request', 'approval money'],
             'tasks' => ['task', 'workload', 'assignment'],

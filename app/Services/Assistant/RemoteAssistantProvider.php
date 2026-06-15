@@ -191,7 +191,7 @@ or:
 {"reply":"natural answer for the user","action":{"type":"navigate","module":"suppliers","filters":{},"auto":true}}
 
 Supported navigate modules:
-dashboard, clients, suppliers, documents, tender_proposals, quotation_requests, requisitions, tasks, sales_quotations, invoices, approvals, attendance, reports, notifications.
+dashboard, clients, suppliers, documents, tender_proposals, quotation_requests, requisitions, tasks, sales_quotations, job_cards, delivery_notes, invoices, approvals, attendance, reports, notifications.
 
 Allowed common filters:
 search, status, priority, category, department_id, date_from, date_to, deadline_window, payment_state, state, module, linked_type.

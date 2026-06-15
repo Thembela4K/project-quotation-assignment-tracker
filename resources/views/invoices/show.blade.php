@@ -14,7 +14,6 @@
                     <a class="btn-secondary" href="{{ route('invoices.edit', $invoice) }}">Edit</a>
                     <form method="POST" action="{{ route('invoices.issue', $invoice) }}">@csrf<button class="btn-primary" type="submit">Issue</button></form>
                 @endif
-                <form method="POST" action="{{ route('invoices.email', $invoice) }}">@csrf<button class="btn-secondary" type="submit">Email Client</button></form>
                 <form method="POST" action="{{ route('invoices.mark-sent', $invoice) }}">@csrf<button class="btn-secondary" type="submit">Mark Sent</button></form>
             @endif
         </div>
@@ -52,6 +51,21 @@
                     <div><span>Paid</span><strong>E{{ number_format((float) $invoice->amount_paid, 2) }}</strong></div>
                     <div><span>Balance</span><strong>E{{ number_format((float) $invoice->balance_due, 2) }}</strong></div>
                 </div>
+            </section>
+
+            <section class="panel">
+                <h2 class="section-title">Source</h2>
+                <dl class="mt-4 space-y-3 text-sm">
+                    @if($invoice->jobCard)
+                        <div><dt class="label">Job Card</dt><dd><a class="link" href="{{ route('job-cards.show', $invoice->jobCard) }}">{{ $invoice->jobCard->job_card_number }}</a></dd></div>
+                    @else
+                        <div><dt class="label">Job Card</dt><dd>Not linked</dd></div>
+                    @endif
+                    @if($invoice->salesQuotation)
+                        <div><dt class="label">Quotation</dt><dd><a class="link" href="{{ route('sales-quotations.show', $invoice->salesQuotation) }}">{{ $invoice->salesQuotation->quotation_number }}</a></dd></div>
+                    @endif
+                    <div><dt class="label">Department</dt><dd>{{ $invoice->department?->name ?? 'Unassigned' }}</dd></div>
+                </dl>
             </section>
 
             @if(auth()->user()->canManageFinance() && ! in_array($invoice->status, [\App\Models\Invoice::STATUS_DRAFT, \App\Models\Invoice::STATUS_PAID, \App\Models\Invoice::STATUS_CANCELLED], true))

@@ -3,7 +3,9 @@
 namespace App\Services\Assistant;
 
 use App\Models\CrmTask;
+use App\Models\DeliveryNote;
 use App\Models\Invoice;
+use App\Models\JobCard;
 use App\Models\SalesQuotation;
 use App\Models\User;
 use Illuminate\Support\Arr;
@@ -78,6 +80,8 @@ class LocalAssistantResponder
             $this->asksTenderCount($text) => $this->countReply('tender_proposals', 'tender proposal', $crmContext),
             $this->asksQuotationRequestCount($text) => $this->countReply('quotation_requests', 'quotation request', $crmContext),
             $this->asksSalesQuotationCount($text) => $this->countReply('sales_quotations', 'sales quotation', $crmContext),
+            $this->asksJobCardCount($text) => $this->countReply('job_cards', 'job card', $crmContext),
+            $this->asksDeliveryNoteCount($text) => $this->countReply('delivery_notes', 'delivery note', $crmContext),
             $this->asksInvoiceCount($text) => $this->countReply('invoices', 'invoice', $crmContext),
             $this->asksUnpaidInvoiceCount($text) => $this->countReply('unpaid_invoices', 'unpaid invoice', $crmContext),
             $this->asksRequisitionCount($text) => $this->countReply('requisitions', 'requisition', $crmContext),
@@ -207,6 +211,8 @@ class LocalAssistantResponder
             'sales_quotations' => ['sales quotation', 'sales quotations', 'sales quote', 'sales quotes', 'client quotation', 'client quotations', 'estimate', 'estimates', 'sales pipeline'],
             'quotation_requests' => ['quotation request', 'quotation requests', 'quote request', 'quote requests', 'rfq', 'incoming quotation'],
             'tender_proposals' => ['tender proposal', 'tender proposals', 'tender', 'tenders', 'sppra', 'esppra'],
+            'job_cards' => ['job card', 'job cards', 'work card', 'work cards'],
+            'delivery_notes' => ['delivery note', 'delivery notes', 'delivery', 'handover note', 'handover notes'],
             'invoices' => ['invoice', 'invoices', 'payment details'],
             'clients' => ['client', 'clients', 'customer', 'customers'],
             'suppliers' => ['supplier', 'suppliers', 'vendor', 'vendors'],
@@ -315,6 +321,30 @@ class LocalAssistantResponder
             }
         }
 
+        if ($module === 'job_cards') {
+            $status = match (true) {
+                str_contains($text, 'ready') || str_contains($text, 'invoice') => JobCard::STATUS_READY_FOR_INVOICE,
+                str_contains($text, 'progress') => JobCard::STATUS_IN_PROGRESS,
+                str_contains($text, 'complete') => JobCard::STATUS_COMPLETED,
+                str_contains($text, 'draft') => JobCard::STATUS_DRAFT,
+                str_contains($text, 'invoiced') => JobCard::STATUS_INVOICED,
+                default => null,
+            };
+
+            return $status ? ['status' => $status] : [];
+        }
+
+        if ($module === 'delivery_notes') {
+            $status = match (true) {
+                str_contains($text, 'issued') => DeliveryNote::STATUS_ISSUED,
+                str_contains($text, 'delivered') => DeliveryNote::STATUS_DELIVERED,
+                str_contains($text, 'draft') => DeliveryNote::STATUS_DRAFT,
+                default => null,
+            };
+
+            return $status ? ['status' => $status] : [];
+        }
+
         if ($module === 'requisitions' && str_contains($text, 'pending')) {
             return ['status' => 'Submitted'];
         }
@@ -383,6 +413,8 @@ class LocalAssistantResponder
             'sales_quotations' => 'Sales Quotations',
             'quotation_requests' => 'Quotation Requests',
             'tender_proposals' => 'Tender Proposals',
+            'job_cards' => 'Job Cards',
+            'delivery_notes' => 'Delivery Notes',
             default => Str::of($module)->replace('_', ' ')->title()->toString(),
         };
     }
@@ -422,6 +454,16 @@ class LocalAssistantResponder
     {
         return $this->isCountQuestion($text)
             && (str_contains($text, 'sales quotation') || str_contains($text, 'client quotation') || str_contains($text, 'estimate'));
+    }
+
+    private function asksJobCardCount(string $text): bool
+    {
+        return $this->isCountQuestion($text) && str_contains($text, 'job card');
+    }
+
+    private function asksDeliveryNoteCount(string $text): bool
+    {
+        return $this->isCountQuestion($text) && str_contains($text, 'delivery note');
     }
 
     private function asksGenericQuotationCount(string $text): bool

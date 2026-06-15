@@ -37,6 +37,7 @@ class Invoice extends Model
     protected $fillable = [
         'client_id',
         'sales_quotation_id',
+        'job_card_id',
         'department_id',
         'created_by',
         'invoice_number',
@@ -83,6 +84,11 @@ class Invoice extends Model
     public function salesQuotation(): BelongsTo
     {
         return $this->belongsTo(SalesQuotation::class);
+    }
+
+    public function jobCard(): BelongsTo
+    {
+        return $this->belongsTo(JobCard::class);
     }
 
     public function department(): BelongsTo

@@ -4,7 +4,7 @@
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
             <h1 class="page-title">Sales Quotations</h1>
-            <p class="page-subtitle">Client-facing quotations with 15% VAT, director approval, print, and email workflow.</p>
+            <p class="page-subtitle">Department quotations with 15% VAT, director approval, PDF download, and manual client outcome tracking.</p>
         </div>
         @if(auth()->user()->canDraftFinance())
             <a class="btn-primary" href="{{ route('sales-quotations.create') }}">New Sales Quotation</a>
