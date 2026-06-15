@@ -114,6 +114,8 @@ Send a development test email with:
 php artisan mail:test
 ```
 
+When `APP_ENV=local`, the app also mirrors sent system emails to Laragon Mailpit when it is available. This keeps presentations reliable even if Gmail delays or filters delivery. Open the local inbox at `http://127.0.0.1:8025`; Mailpit listens on SMTP port `1025`.
+
 ## MIS AI Assistant
 
 MIS uses an OpenAI-compatible NVIDIA API endpoint as the primary assistant engine. The model receives CRM context from Laravel, answers from the available records, and may return vetted navigation actions that Laravel validates before the UI opens a page.

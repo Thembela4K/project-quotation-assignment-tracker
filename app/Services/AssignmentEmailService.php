@@ -11,6 +11,8 @@ use Throwable;
 
 class AssignmentEmailService
 {
+    public function __construct(private readonly LocalMailMirror $localMailMirror) {}
+
     public function send(Assignment $assignment): string
     {
         $assignment->loadMissing(['assignable', 'department']);
@@ -37,6 +39,20 @@ class AssignmentEmailService
         $subject = "Assignment: {$reference} routed to {$assignment->department->name}";
 
         try {
+            $this->localMailMirror->sendMailable($assignment->assignee_email, new AssignmentNotificationMail(
+                assignment: $assignment,
+                recordType: $assignable instanceof TenderProposal ? 'Tender Proposal' : 'Quotation',
+                reference: $reference,
+                title: $title,
+                status: $assignable->status,
+                priority: $assignable->priority,
+                dueLabel: $dueLabel,
+                dueDate: $dueDate->toDateString(),
+                portalUrl: $portalUrl,
+                importantDates: $importantDates,
+                documentCount: $assignable->documents()->count(),
+                documents: $documents,
+            ));
             Mail::to($assignment->assignee_email)->send(new AssignmentNotificationMail(
                 assignment: $assignment,
                 recordType: $assignable instanceof TenderProposal ? 'Tender Proposal' : 'Quotation',

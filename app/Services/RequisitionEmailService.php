@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Mail;
 
 class RequisitionEmailService
 {
+    public function __construct(private readonly LocalMailMirror $localMailMirror) {}
+
     public function notifySubmitted(Requisition $requisition): int
     {
         $requisition->load(['department', 'requester', 'items']);
@@ -79,12 +81,15 @@ class RequisitionEmailService
 
         foreach ($recipients as $recipient) {
             try {
-                Mail::send('emails.requisition-notification', [
+                $data = [
                     'requisition' => $requisition,
                     'eventLabel' => $eventLabel,
                     'messageText' => $message,
                     'portalUrl' => route('requisitions.show', $requisition),
-                ], function ($mail) use ($recipient, $subject): void {
+                ];
+
+                $this->localMailMirror->sendView($recipient, 'emails.requisition-notification', $data, $subject);
+                Mail::send('emails.requisition-notification', $data, function ($mail) use ($recipient, $subject): void {
                     $mail->to($recipient)->subject($subject);
                 });
 

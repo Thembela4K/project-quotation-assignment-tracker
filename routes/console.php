@@ -10,6 +10,7 @@ use App\Models\SalesQuotation;
 use App\Services\Assistant\DocumentTextExtractor;
 use App\Services\ReminderService;
 use App\Services\CrmNotificationService;
+use App\Services\LocalMailMirror;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Mail;
@@ -36,6 +37,7 @@ Artisan::command('mail:test {recipient?}', function (): int {
     }
 
     try {
+        app(LocalMailMirror::class)->sendMailable($recipient, new TestNotificationMail);
         Mail::to($recipient)->send(new TestNotificationMail);
     } catch (Throwable $exception) {
         $this->error('Test email failed: '.$exception->getMessage());

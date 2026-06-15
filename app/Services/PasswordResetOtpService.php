@@ -11,6 +11,8 @@ class PasswordResetOtpService
 {
     public const EXPIRES_IN_MINUTES = 10;
 
+    public function __construct(private readonly LocalMailMirror $localMailMirror) {}
+
     public function send(User $user): ?PasswordResetOtp
     {
         if (! $this->canResetByEmail($user)) {
@@ -25,6 +27,7 @@ class PasswordResetOtpService
             'expires_at' => now()->addMinutes(self::EXPIRES_IN_MINUTES),
         ]);
 
+        $this->localMailMirror->sendMailable($user->email, new PasswordResetOtpMail($user, $otp, self::EXPIRES_IN_MINUTES));
         Mail::to($user->email)->send(new PasswordResetOtpMail($user, $otp, self::EXPIRES_IN_MINUTES));
 
         return $record;

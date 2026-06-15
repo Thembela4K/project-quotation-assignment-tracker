@@ -12,6 +12,8 @@ use Throwable;
 
 class UserInvitationService
 {
+    public function __construct(private readonly LocalMailMirror $localMailMirror) {}
+
     public function invite(User $user, ?User $inviter): UserInvitation
     {
         return DB::transaction(function () use ($user, $inviter): UserInvitation {
@@ -62,6 +64,7 @@ class UserInvitationService
     private function send(User $user, UserInvitation $invitation, string $token): void
     {
         try {
+            $this->localMailMirror->sendMailable($user->email, new UserInvitationMail($user, $invitation, $token));
             Mail::to($user->email)->send(new UserInvitationMail($user, $invitation, $token));
 
             $invitation->update([

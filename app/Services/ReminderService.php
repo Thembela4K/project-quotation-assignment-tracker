@@ -22,6 +22,8 @@ class ReminderService
 
     public const DASHBOARD_WINDOW_DAYS = 5;
 
+    public function __construct(private readonly LocalMailMirror $localMailMirror) {}
+
     public function dueItems(): Collection
     {
         return $this->upcomingItems(self::DASHBOARD_WINDOW_DAYS)
@@ -153,6 +155,7 @@ class ReminderService
             }
 
             Mail::to($item['owner_email'])->send(new DeadlineReminderMail($item));
+            $this->localMailMirror->sendMailable($item['owner_email'], new DeadlineReminderMail($item));
 
             $status = 'Sent';
             $message = '';
